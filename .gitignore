@@ -47,6 +47,7 @@ cache/
 tmp/
 temp/
 # 环境变量配置（敏感信息，如数据库密码、密钥）
+config.yaml
 .env
 .env.local
 .env.dev
