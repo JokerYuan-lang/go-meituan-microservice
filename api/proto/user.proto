@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package user;
+option go_package = "./internal/user/proto;userProto";
+
+//定义用户服务
+
+service UserService{
+
+}
+
+//注册请求
+message RegisterRequest{
+  string username = 1; //用户名
+  string password = 2; //密码
+  string phone = 3;    //手机号
+}
+
+//注册响应
+message RegisterResponse{
+  int32 code = 1;   //状态码
+  string msg = 2;   //提示信息
+  int64 user_id = 3;//注册成功返回用户ID
+}
+
+//登录请求
+message LoginRequest{
+  string phone = 1;    //手机号
+  string password = 2; //密码
+}
+
+//登录响应
+message LoginResponse{
+  int32 code = 1;
+  string msg = 2;
+  string token = 3; //供鉴权
+  int64 user_id = 4;
+  string username = 5;
+}
+
+//获取用户信息请求
+message GetUserInfoRequest{
+  int64 user_id = 1; //用户ID
+}
+
+//用户信息响应
+message GetUserInfoResponse{
+  int32 code = 1;
+  string msg = 2;
+  UserInfo data = 3;
+}
+
+//用户信息结构体
+message UserInfo{
+  int64 user_id = 1;
+  string username = 2;
+  string phone = 3;
+  string avatar = 4;
+}
+
+//收货地址结构体
+message Address{
+  int64 address_id = 1;
+  int64 user_id = 2;
+  string receiver = 3; //收货人
+  string phone = 4;    //收货人电话
+  string province = 5; //省份
+  string city = 6;     //城市
+  string district = 7; //区/县
+  string detail = 8;   //详细地址
+  bool is_default = 9;  //是否默认地址
+}
+
+//添加地址请求
+message AddAddressRequest{
+  int64 user_id = 1;
+  string receiver = 2;
+  string phone = 3;
+  string province = 4;
+  string city = 5;
+  string district = 6;
+  string detail = 7;
+  bool is_default = 8;
+}
+
+message AddAddressResponse{
+  int32 code = 1;
+  string msg = 2;
+  int64 address_id = 3;
+}
+
+message ListAddressesRequest{
+  int64 user_id = 1;
+}
+
+message ListAddressesResponse{
+  int32 code = 1;
+  string msg = 2;
+  repeated Address address = 3; //地址列表
+}
