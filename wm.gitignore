@@ -1,0 +1,75 @@
+# ==================== Go 项目核心忽略 ====================
+# 编译产物（可执行文件、库文件）
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.out
+bin/
+pkg/
+dist/
+build/
+# Go 模块缓存
+go.mod.sum
+go.sum
+# 测试相关
+*.test
+*.coverprofile
+
+vendor/
+
+# ==================== 开发工具/IDE 配置 ====================
+# VS Code
+.vscode/
+*.code-workspace
+# Goland/IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+# Vim
+*.swp
+*.swo
+# Sublime Text
+*.sublime-*
+# 其他编辑器
+.DS_Store  # Mac 系统文件
+Thumbs.db  # Windows 系统文件
+
+# ==================== 项目运行相关 ====================
+# 日志文件
+logs/
+*.log
+log/
+# 缓存文件
+cache/
+tmp/
+temp/
+# 环境变量配置（敏感信息，如数据库密码、密钥）
+.env
+.env.local
+.env.dev
+.env.prod
+.env.test
+# 配置文件备份
+*.bak
+*.backup
+# 数据库文件
+*.db
+# 压缩包
+*.zip
+*.tar.gz
+*.rar
+
+# ==================== 微服务相关 ====================
+# 中间件数据目录（本地开发的 MySQL/Redis/Kafka 数据）
+mysql-data/
+redis-data/
+kafka-data/
+# 容器相关
+.dockerignore
+docker-compose.override.yml
+# 监控相关
+prometheus-data/
+grafana-data/
