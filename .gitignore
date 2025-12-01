@@ -7,7 +7,7 @@
 *.dylib
 *.out
 bin/
-pkg/
+
 dist/
 build/
 # Go 模块缓存
