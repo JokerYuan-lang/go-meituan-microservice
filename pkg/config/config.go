@@ -21,6 +21,7 @@ type Config struct {
 	ES    ESConfig    `mapstructure:"es"`
 	GRPC  GRPCConfig  `mapstructure:"grpc"`
 	Log   LogConfig   `mapstructure:"log"`
+	Jwt   JwtConfig   `mapstructure:"jwt"`
 }
 
 // MySQL配置
@@ -72,6 +73,11 @@ type GRPCConfig struct {
 type LogConfig struct {
 	Level string `mapstructure:"level"`
 	Path  string `mapstructure:"path"`
+}
+
+type JwtConfig struct {
+	Secret string `mapstructure:"secret"`
+	Expire int    `mapstructure:"expire"`
 }
 
 func InitConfig(configPath string) error {
