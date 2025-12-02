@@ -6,6 +6,7 @@ import (
 
 	"github.com/JokerYuan-lang/go-meituan-microservice/internal/user/repo/model"
 	"github.com/JokerYuan-lang/go-meituan-microservice/pkg/db"
+	"github.com/JokerYuan-lang/go-meituan-microservice/pkg/utils"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -14,6 +15,7 @@ type UserRepo interface {
 	CreateUser(ctx context.Context, user *model.User) error
 	GetUserByPhone(ctx context.Context, phone string) (*model.User, error)
 	GetUserByUserID(ctx context.Context, userID int64) (*model.User, error)
+	UpdateUser(ctx context.Context, user *model.User) error
 }
 
 type userRepo struct{}
@@ -54,4 +56,17 @@ func (u *userRepo) GetUserByUserID(ctx context.Context, userID int64) (*model.Us
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (u *userRepo) UpdateUser(ctx context.Context, user *model.User) error {
+	tx := db.Mysql.WithContext(ctx).Model(&model.User{}).Where("user_id = ?", user.UserID).Updates(user)
+	if err := tx.Error; err != nil {
+		zap.L().Error("更新用户失败", zap.Any("user", user), zap.Error(tx.Error))
+		return utils.NewDBError("更新用户失败：" + tx.Error.Error())
+	}
+	if tx.RowsAffected == 0 {
+		zap.L().Warn("更新用户无数据变化", zap.Int64("user_id", user.UserID))
+		return utils.NewBizError("无数据更新")
+	}
+	return nil
 }

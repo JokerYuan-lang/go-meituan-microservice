@@ -3,98 +3,182 @@ syntax = "proto3";
 package user;
 option go_package = "./internal/user/proto;userProto";
 
-//定义用户服务
+import "google/protobuf/empty.proto"; // 空请求/响应
+import "validate.proto";
 
-service UserService{
-
+// 用户服务定义
+service UserService {
+  // 注册
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  // 登录
+  rpc Login(LoginRequest) returns (LoginResponse);
+  // 获取用户信息（需要鉴权）
+  rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
+  // 更新用户信息（需要鉴权）
+  rpc UpdateUserInfo(UpdateUserInfoRequest) returns (UpdateUserInfoResponse);
+  // 添加收货地址（需要鉴权）
+  rpc AddAddress(AddAddressRequest) returns (AddAddressResponse);
+  // 获取地址列表（需要鉴权）
+  rpc ListAddresses(ListAddressesRequest) returns (ListAddressesResponse);
+  // 更新地址（需要鉴权）
+  rpc UpdateAddress(UpdateAddressRequest) returns (UpdateAddressResponse);
+  // 删除地址（需要鉴权）
+  rpc DeleteAddress(DeleteAddressRequest) returns (DeleteAddressResponse);
+  // 设置默认地址（需要鉴权）
+  rpc SetDefaultAddress(SetDefaultAddressRequest) returns (SetDefaultAddressResponse);
 }
 
-//注册请求
-message RegisterRequest{
-  string username = 1; //用户名
-  string password = 2; //密码
-  string phone = 3;    //手机号
+// 注册请求（添加参数校验标签）
+message RegisterRequest {
+  string username = 1 [(validate.rules).string.min_len = 2, (validate.rules).string.max_len = 32]; // 用户名2-32位
+  string password = 2 [(validate.rules).string.min_len = 6, (validate.rules).string.max_len = 20]; // 密码6-20位
+  string phone = 3 [(validate.rules).string.pattern = "^1[3-9]\\d{9}$"]; // 手机号正则
 }
 
-//注册响应
-message RegisterResponse{
-  int32 code = 1;   //状态码
-  string msg = 2;   //提示信息
-  int64 user_id = 3;//注册成功返回用户ID
+// 注册响应
+message RegisterResponse {
+  int32 code = 1; // 错误码
+  string msg = 2; // 提示信息
+  int64 user_id = 3; // 用户ID
+  string token = 4; // JWT Token
 }
 
-//登录请求
-message LoginRequest{
-  string phone = 1;    //手机号
-  string password = 2; //密码
+// 登录请求
+message LoginRequest {
+  string phone = 1 [(validate.rules).string.pattern = "^1[3-9]\\d{9}$"]; // 手机号正则
+  string password = 2 [(validate.rules).string.min_len = 6, (validate.rules).string.max_len = 20]; // 密码6-20位
 }
 
-//登录响应
-message LoginResponse{
+// 登录响应
+message LoginResponse {
   int32 code = 1;
   string msg = 2;
-  string token = 3; //供鉴权
+  string token = 3; // JWT Token
   int64 user_id = 4;
   string username = 5;
+  string role = 6;
 }
 
-//获取用户信息请求
-message GetUserInfoRequest{
-  int64 user_id = 1; //用户ID
+// 获取用户信息请求
+message GetUserInfoRequest {
+  int64 user_id = 1 [(validate.rules).int64.gt = 0]; // 必须大于0
 }
 
-//用户信息响应
-message GetUserInfoResponse{
+// 用户信息响应
+message GetUserInfoResponse {
   int32 code = 1;
   string msg = 2;
   UserInfo data = 3;
 }
 
-//用户信息结构体
-message UserInfo{
+// 用户信息结构体
+message UserInfo {
   int64 user_id = 1;
   string username = 2;
   string phone = 3;
   string avatar = 4;
+  string role = 5;
+  string created_at = 6; // 创建时间
 }
 
-//收货地址结构体
-message Address{
+// 更新用户信息请求
+message UpdateUserInfoRequest {
+  int64 user_id = 1 [(validate.rules).int64.gt = 0];
+  string username = 2 [(validate.rules).string.min_len = 2, (validate.rules).string.max_len = 32]; // 可选，更新时传
+  string avatar = 3 [(validate.rules).string.uri = true]; // 头像URL格式
+}
+
+// 更新用户信息响应
+message UpdateUserInfoResponse {
+  int32 code = 1;
+  string msg = 2;
+}
+
+// 收货地址结构体
+message Address {
   int64 address_id = 1;
   int64 user_id = 2;
-  string receiver = 3; //收货人
-  string phone = 4;    //收货人电话
-  string province = 5; //省份
-  string city = 6;     //城市
-  string district = 7; //区/县
-  string detail = 8;   //详细地址
-  bool is_default = 9;  //是否默认地址
+  string receiver = 3;
+  string phone = 4;
+  string province = 5;
+  string city = 6;
+  string district = 7;
+  string detail = 8;
+  bool is_default = 9;
+  string created_at = 10;
+  string updated_at = 11;
 }
 
-//添加地址请求
-message AddAddressRequest{
-  int64 user_id = 1;
-  string receiver = 2;
-  string phone = 3;
-  string province = 4;
-  string city = 5;
-  string district = 6;
-  string detail = 7;
+// 添加地址请求
+message AddAddressRequest {
+  int64 user_id = 1 [(validate.rules).int64.gt = 0];
+  string receiver = 2 [(validate.rules).string.min_len = 2, (validate.rules).string.max_len = 32];
+  string phone = 3 [(validate.rules).string.pattern = "^1[3-9]\\d{9}$"];
+  string province = 4 [(validate.rules).string.min_len = 2];
+  string city = 5 [(validate.rules).string.min_len = 2];
+  string district = 6 [(validate.rules).string.min_len = 2];
+  string detail = 7 [(validate.rules).string.min_len = 5];
   bool is_default = 8;
 }
 
-message AddAddressResponse{
+// 添加地址响应
+message AddAddressResponse {
   int32 code = 1;
   string msg = 2;
   int64 address_id = 3;
 }
 
-message ListAddressesRequest{
-  int64 user_id = 1;
+// 获取地址列表请求
+message ListAddressesRequest {
+  int64 user_id = 1 [(validate.rules).int64.gt = 0];
 }
 
-message ListAddressesResponse{
+// 获取地址列表响应
+message ListAddressesResponse {
   int32 code = 1;
   string msg = 2;
-  repeated Address address = 3; //地址列表
+  repeated Address addresses = 3; // 地址列表
+}
+
+// 更新地址请求
+message UpdateAddressRequest {
+  int64 address_id = 1 [(validate.rules).int64.gt = 0];
+  int64 user_id = 2 [(validate.rules).int64.gt = 0];
+  string receiver = 3 [(validate.rules).string.min_len = 2, (validate.rules).string.max_len = 32];
+  string phone = 4 [(validate.rules).string.pattern = "^1[3-9]\\d{9}$"];
+  string province = 5 [(validate.rules).string.min_len = 2];
+  string city = 6 [(validate.rules).string.min_len = 2];
+  string district = 7 [(validate.rules).string.min_len = 2];
+  string detail = 8 [(validate.rules).string.min_len = 5];
+  bool is_default = 9;
+}
+
+// 更新地址响应
+message UpdateAddressResponse {
+  int32 code = 1;
+  string msg = 2;
+}
+
+// 删除地址请求
+message DeleteAddressRequest {
+  int64 address_id = 1 [(validate.rules).int64.gt = 0];
+  int64 user_id = 2 [(validate.rules).int64.gt = 0];
+}
+
+// 删除地址响应
+message DeleteAddressResponse {
+  int32 code = 1;
+  string msg = 2;
+}
+
+// 设置默认地址请求
+message SetDefaultAddressRequest {
+  int64 user_id = 1 [(validate.rules).int64.gt = 0];
+  int64 address_id = 2 [(validate.rules).int64.gt = 0];
+}
+
+// 设置默认地址响应
+message SetDefaultAddressResponse {
+  int32 code = 1;
+  string msg = 2;
 }
