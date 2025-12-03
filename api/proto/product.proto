@@ -1,0 +1,121 @@
+syntax = "proto3";
+package product;
+
+option go_package = "./internal/product/proto;productProto";
+
+import "validate.proto";
+
+
+service ProductService {
+  // 商家创建商品
+  rpc CreateProduct(CreateProductRequest) returns (CreateProductResponse);
+  // 商家更新商品（含库存）
+  rpc UpdateProduct(UpdateProductRequest) returns (CommonResponse);
+  // 商家删除商品
+  rpc DeleteProduct(DeleteProductRequest) returns (CommonResponse);
+  // 根据商家ID查询商品列表
+  rpc ListProductsByMerchantID(ListProductsRequest) returns (ListProductsResponse);
+  // 根据商品ID查询商品详情（下单用）
+  rpc GetProductByID(GetProductRequest) returns (GetProductResponse);
+  // 扣减库存（订单创建时调用）
+  rpc DeductStock(DeductStockRequest) returns (CommonResponse);
+  // 恢复库存（订单取消时调用）
+  rpc RestoreStock(RestoreStockRequest) returns (CommonResponse);
+}
+
+// 商品基础信息
+message Product {
+  int64 product_id = 1;          // 商品ID
+  int64 merchant_id = 2;         // 商家ID
+  string name = 3;               // 商品名称
+  string description = 4;        // 商品描述
+  float price = 5;               // 商品价格（元）
+  int32 stock = 6;               // 库存数量
+  string image_url = 7;          // 商品图片
+  bool is_sold_out = 8;          // 是否售罄
+  string created_at = 9;         // 创建时间
+  string updated_at = 10;        // 更新时间
+}
+
+// 通用响应
+message CommonResponse {
+  int32 code = 1;
+  string msg = 2;
+}
+
+// 创建商品请求
+message CreateProductRequest {
+  int64 merchant_id = 1 [(validate.rules).int64.gt = 0];
+  string name = 2 [(validate.rules).string.min_len = 2, (validate.rules).string.max_len = 64];
+  string description = 3 [(validate.rules).string.max_len = 512];
+  float price = 4 [(validate.rules).float.gt = 0];
+  int32 stock = 5 [(validate.rules).int32.gte = 0];
+  string image_url = 6 [(validate.rules).string.uri = true];
+}
+
+// 创建商品响应
+message CreateProductResponse {
+  int32 code = 1;
+  string msg = 2;
+  int64 product_id = 3;
+}
+
+// 更新商品请求
+message UpdateProductRequest {
+  int64 product_id = 1 [(validate.rules).int64.gt = 0];
+  int64 merchant_id = 2 [(validate.rules).int64.gt = 0];
+  string name = 3 [(validate.rules).string.min_len = 2, (validate.rules).string.max_len = 64];
+  string description = 4 [(validate.rules).string.max_len = 512];
+  float price = 5 [(validate.rules).float.gt = 0];
+  int32 stock = 6 [(validate.rules).int32.gte = 0];
+  string image_url = 7 [(validate.rules).string.uri = true];
+  bool is_sold_out = 8;
+}
+
+// 删除商品请求
+message DeleteProductRequest {
+  int64 product_id = 1 [(validate.rules).int64.gt = 0];
+  int64 merchant_id = 2 [(validate.rules).int64.gt = 0];
+}
+
+// 查询商品列表请求
+message ListProductsRequest {
+  int64 merchant_id = 1 [(validate.rules).int64.gt = 0];
+  int32 page = 2 [(validate.rules).int32.gte = 1];       // 页码（默认1）
+  int32 page_size = 3 [(validate.rules).int32.gte = 10, (validate.rules).int32.lte = 100]; // 每页条数
+}
+
+// 查询商品列表响应
+message ListProductsResponse {
+  int32 code = 1;
+  string msg = 2;
+  repeated Product products = 3;
+  int32 total = 4;       // 总条数
+  int32 page = 5;        // 当前页码
+  int32 page_size = 6;   // 每页条数
+}
+
+// 查询商品详情请求
+message GetProductRequest {
+  int64 product_id = 1 [(validate.rules).int64.gt = 0];
+}
+
+// 查询商品详情响应
+message GetProductResponse {
+  int32 code = 1;
+  string msg = 2;
+  Product product = 3;
+}
+
+// 扣减库存请求
+message DeductStockRequest {
+  int64 product_id = 1 [(validate.rules).int64.gt = 0];
+  int32 num = 2 [(validate.rules).int32.gt = 0]; // 扣减数量
+}
+
+// 恢复库存请求
+message RestoreStockRequest {
+  int64 product_id = 1 [(validate.rules).int64.gt = 0];
+  int32 num = 2 [(validate.rules).int32.gt = 0]; // 恢复数量
+}
+

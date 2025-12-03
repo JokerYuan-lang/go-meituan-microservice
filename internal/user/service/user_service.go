@@ -11,10 +11,10 @@ import (
 	"go.uber.org/zap"
 )
 
-// 全局参数校验器（校验领域模型的入参）
+// 全局参数校验器
 var validate = validator.New()
 
-// 定义service层的入参结构体（不依赖proto，纯领域层定义）
+// RegisterParam 定义service层的入参结构体（不依赖proto，纯领域层定义）
 type RegisterParam struct {
 	Username string `validate:"required,min=2,max=32"`          // 用户名2-32位
 	Password string `validate:"required,min=6,max=20"`          // 密码6-20位
@@ -65,7 +65,7 @@ type SetDefaultAddressParam struct {
 	AddressID int64 `validate:"required,gt=0"`
 }
 
-// 定义service层的返回结构体（纯领域层，不依赖proto）
+// LoginResult 定义service层的返回结构体（纯领域层，不依赖proto）
 type LoginResult struct {
 	UserID   int64  `json:"user_id"`
 	Username string `json:"username"`
