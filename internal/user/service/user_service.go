@@ -14,7 +14,17 @@ import (
 
 var validate = validator.New()
 
-type UserService interface{}
+type UserService interface {
+	Register(ctx context.Context, req *userProto.RegisterRequest) (*userProto.RegisterResponse, error)
+	Login(ctx context.Context, req *userProto.LoginRequest) (*userProto.LoginResponse, error)
+	GetUserInfo(ctx context.Context, req *userProto.GetUserInfoRequest) (*userProto.GetUserInfoResponse, error)
+	UpdateUserInfo(ctx context.Context, req *userProto.UpdateUserInfoRequest) (*userProto.UpdateUserInfoResponse, error)
+	AddAddress(ctx context.Context, req *userProto.AddAddressRequest) (*userProto.AddAddressResponse, error)
+	ListAddresses(ctx context.Context, req *userProto.ListAddressesRequest) (*userProto.ListAddressesResponse, error)
+	UpdateAddress(ctx context.Context, req *userProto.UpdateAddressRequest) (*userProto.UpdateAddressResponse, error)
+	DeleteAddress(ctx context.Context, req *userProto.DeleteAddressRequest) (*userProto.DeleteAddressResponse, error)
+	SetDefaultAddress(ctx context.Context, req *userProto.SetDefaultAddressRequest) (*userProto.SetDefaultAddressResponse, error)
+}
 
 type userService struct {
 	userRepo    repo.UserRepo
@@ -139,17 +149,198 @@ func (u *userService) Login(ctx context.Context, req *userProto.LoginRequest) (*
 }
 
 func (u *userService) GetUserInfo(ctx context.Context, req *userProto.GetUserInfoRequest) (*userProto.GetUserInfoResponse, error) {
-	
+	if req.UserId == 0 {
+		return &userProto.GetUserInfoResponse{
+			Code: utils.ErrCodeParam,
+			Msg:  "用户ID不能为空",
+		}, nil
+	}
+
+	user, err := u.userRepo.GetUserByUserID(ctx, req.UserId)
+	if err != nil {
+		return &userProto.GetUserInfoResponse{
+			Code: int32(err.(*utils.AppError).Code),
+			Msg:  err.Error(),
+		}, nil
+	}
+	if user == nil {
+		return &userProto.GetUserInfoResponse{
+			Code: utils.ErrCodeBiz,
+			Msg:  "用户不存在",
+		}, nil
+	}
+	return &userProto.GetUserInfoResponse{
+		Code: utils.ErrCodeSuccess,
+		Msg:  "查询成功",
+		Data: &userProto.UserInfo{
+			UserId:    user.UserID,
+			Username:  user.Username,
+			Phone:     user.Phone,
+			Avatar:    user.Avatar,
+			Role:      user.Role,
+			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+		},
+	}, nil
 }
 
 func (u *userService) UpdateUserInfo(ctx context.Context, req *userProto.UpdateUserInfoRequest) (*userProto.UpdateUserInfoResponse, error) {
+	if req.UserId == 0 {
+		return &userProto.UpdateUserInfoResponse{
+			Code: utils.ErrCodeParam,
+			Msg:  "用户ID不能为空",
+		}, nil
+	}
+	user := &model.User{
+		Username: req.Username,
+		UserID:   req.UserId,
+		Avatar:   req.Avatar,
+	}
 
+	err := u.userRepo.UpdateUser(ctx, user)
+	if err != nil {
+		return &userProto.UpdateUserInfoResponse{
+			Code: int32(err.(*utils.AppError).Code),
+			Msg:  err.Error(),
+		}, nil
+	}
+	return &userProto.UpdateUserInfoResponse{
+		Code: utils.ErrCodeSuccess,
+		Msg:  "更新用户信息成功",
+	}, nil
 }
 
 func (u *userService) AddAddress(ctx context.Context, req *userProto.AddAddressRequest) (*userProto.AddAddressResponse, error) {
+	if req.UserId == 0 {
+		return &userProto.AddAddressResponse{
+			Code: utils.ErrCodeParam,
+			Msg:  "user_id 不能为空",
+		}, nil
+	}
+	address := &model.Address{
+		UserID:    req.UserId,
+		Receiver:  req.Receiver,
+		Phone:     req.Phone,
+		Province:  req.Province,
+		City:      req.City,
+		District:  req.District,
+		Detail:    req.Detail,
+		IsDefault: req.IsDefault,
+	}
 
+	err := u.addressRepo.CreateAddress(ctx, address)
+	if err != nil {
+		return &userProto.AddAddressResponse{
+			Code: int32(err.(*utils.AppError).Code),
+			Msg:  err.Error(),
+		}, nil
+	}
+	return &userProto.AddAddressResponse{
+		Code: utils.ErrCodeSuccess,
+		Msg:  "添加地址成功",
+	}, nil
 }
 
 func (u *userService) ListAddresses(ctx context.Context, req *userProto.ListAddressesRequest) (*userProto.ListAddressesResponse, error) {
+	if req.UserId == 0 {
+		return &userProto.ListAddressesResponse{
+			Code: utils.ErrCodeParam,
+			Msg:  "user_if不能为空",
+		}, nil
+	}
+	addresses, err := u.addressRepo.ListAddressesByUserID(ctx, req.UserId)
+	if err != nil {
+		return &userProto.ListAddressesResponse{
+			Code: int32(err.(*utils.AppError).Code),
+			Msg:  err.Error(),
+		}, nil
+	}
+	addressList := make([]*userProto.Address, 0)
+	for _, address := range addresses {
+		addressList = append(addressList, &userProto.Address{
+			AddressId: address.AddressID,
+			UserId:    address.UserID,
+			Phone:     address.Phone,
+			Province:  address.Province,
+			City:      address.City,
+			District:  address.District,
+			Detail:    address.Detail,
+			Receiver:  address.Receiver,
+			IsDefault: address.IsDefault,
+		})
+	}
+	return &userProto.ListAddressesResponse{
+		Code:      utils.ErrCodeSuccess,
+		Msg:       "查询地址列表成功",
+		Addresses: addressList,
+	}, nil
+}
 
+func (u *userService) UpdateAddress(ctx context.Context, req *userProto.UpdateAddressRequest) (*userProto.UpdateAddressResponse, error) {
+	if req.UserId == 0 || req.AddressId == 0 {
+		return &userProto.UpdateAddressResponse{
+			Code: utils.ErrCodeParam,
+			Msg:  "用户ID和地址ID不能为空",
+		}, nil
+	}
+	address := &model.Address{
+		AddressID: req.AddressId,
+		UserID:    req.UserId,
+		Receiver:  req.Receiver,
+		Phone:     req.Phone,
+		Province:  req.Province,
+		City:      req.City,
+		District:  req.District,
+		Detail:    req.Detail,
+		IsDefault: req.IsDefault,
+	}
+	err := u.addressRepo.UpdateAddress(ctx, address)
+	if err != nil {
+		return &userProto.UpdateAddressResponse{
+			Code: int32(err.(*utils.AppError).Code),
+			Msg:  err.Error(),
+		}, nil
+	}
+	return &userProto.UpdateAddressResponse{
+		Code: utils.ErrCodeSuccess,
+		Msg:  "更新地址成功",
+	}, nil
+}
+func (u *userService) DeleteAddress(ctx context.Context, req *userProto.DeleteAddressRequest) (*userProto.DeleteAddressResponse, error) {
+	if req.UserId == 0 || req.AddressId == 0 {
+		return &userProto.DeleteAddressResponse{
+			Code: utils.ErrCodeParam,
+			Msg:  "用户ID和地址ID不能为空",
+		}, nil
+	}
+	err := u.addressRepo.DeleteAddress(ctx, req.AddressId, req.UserId)
+	if err != nil {
+		return &userProto.DeleteAddressResponse{
+			Code: int32(err.(*utils.AppError).Code),
+			Msg:  err.Error(),
+		}, nil
+	}
+	return &userProto.DeleteAddressResponse{
+		Code: utils.ErrCodeSuccess,
+		Msg:  "删除地址成功",
+	}, nil
+}
+
+func (u *userService) SetDefaultAddress(ctx context.Context, req *userProto.SetDefaultAddressRequest) (*userProto.SetDefaultAddressResponse, error) {
+	if req.UserId == 0 || req.AddressId == 0 {
+		return &userProto.SetDefaultAddressResponse{
+			Code: utils.ErrCodeParam,
+			Msg:  "用户ID和地址ID不能为空",
+		}, nil
+	}
+	err := u.addressRepo.UpdateDefaultAddress(ctx, req.AddressId, req.UserId)
+	if err != nil {
+		return &userProto.SetDefaultAddressResponse{
+			Code: int32(err.(*utils.AppError).Code),
+			Msg:  err.Error(),
+		}, nil
+	}
+	return &userProto.SetDefaultAddressResponse{
+		Code: utils.ErrCodeSuccess,
+		Msg:  "设置默认地址成功",
+	}, nil
 }
