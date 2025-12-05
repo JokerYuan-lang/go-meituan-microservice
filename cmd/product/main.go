@@ -28,6 +28,11 @@ func main() {
 	_ = config.InitConfig(*configPath)
 	defer zap.L().Sync()
 	db.InitMysql()
+	// 迁移创建商品表
+	//if err := db.Mysql.AutoMigrate(&model.Product{}); err != nil {
+	//	zap.L().Fatal("商品表迁移失败", zap.Error(err))
+	//}
+
 	redis.InitRedis()
 	kafka.InitKafkaProducer()
 	defer func() {
