@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/JokerYuan-lang/go-meituan-microservice/pkg/utils"
 	"gorm.io/gorm"
 )
 
@@ -33,11 +33,10 @@ func (o *Order) TableName() string {
 
 // BeforeCreate 钩子：生成唯一订单编号
 func (o *Order) BeforeCreate(tx *gorm.DB) error {
-	// 生成规则：YYYYMMDD + uuid
+	// 生成规则：YYYYMMDD + 随机数（简化版）
 	now := time.Now()
 	dateStr := now.Format("20060102")
-	u := uuid.New()
-	randomStr := u.String() // 复用工具类生成8位随机数
+	randomStr := utils.RandomString(8) // 复用工具类生成8位随机数
 	o.OrderNo = dateStr + randomStr
 	return nil
 }

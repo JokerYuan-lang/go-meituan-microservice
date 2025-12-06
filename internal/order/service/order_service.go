@@ -203,11 +203,11 @@ func (s *orderService) UpdateOrderStatus(ctx context.Context, param UpdateOrderS
 		return utils.NewParamError("参数错误：" + err.Error())
 	}
 
-	//// 2. 校验状态合法性
-	//validStatus := []string{"待接单", "已接单", "待配送", "已完成", "已取消", "已拒单"}
-	//if !utils.ContainsString(validStatus, param.Status) {
-	//	return utils.NewParamError("订单状态不合法")
-	//}
+	// 2. 校验状态合法性
+	validStatus := []string{"待接单", "已接单", "待配送", "已完成", "已取消", "已拒单"}
+	if !utils.ContainsString(validStatus, param.Status) {
+		return utils.NewParamError("订单状态不合法")
+	}
 
 	// 3. 调用Repo更新状态
 	return s.orderRepo.UpdateOrderStatus(ctx, param.OrderID, param.Status, param.Remark)
