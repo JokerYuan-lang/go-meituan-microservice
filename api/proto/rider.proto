@@ -1,0 +1,150 @@
+syntax = "proto3";
+
+package rider;
+option go_package = "./internal/rider/proto;riderProto";
+
+import "validate.proto";
+
+service RiderService {
+  // 骑手注册/入驻
+  rpc RiderRegister(RiderRegisterRequest) returns (RiderRegisterResponse);
+  // 骑手登录
+  rpc RiderLogin(RiderLoginRequest) returns (RiderLoginResponse);
+  // 获取骑手信息
+  rpc GetRiderInfo(GetRiderInfoRequest) returns (GetRiderInfoResponse);
+  // 骑手接单（分配订单）
+  rpc AcceptOrder(AcceptOrderRequest) returns (CommonResponse);
+  // 骑手更新配送状态（取餐/配送中/已完成）
+  rpc UpdateDeliveryStatus(UpdateDeliveryStatusRequest) returns (CommonResponse);
+  // 骑手查询待接订单列表
+  rpc ListPendingOrders(ListPendingOrdersRequest) returns (ListPendingOrdersResponse);
+  // 骑手查询自己的配送订单
+  rpc ListRiderOrders(ListRiderOrdersRequest) returns (ListRiderOrdersResponse);
+}
+
+// 骑手基础信息
+message Rider {
+  int64 rider_id = 1;            // 骑手ID
+  string name = 2;               // 骑手姓名
+  string phone = 3;              // 骑手电话
+  string avatar = 4;             // 骑手头像
+  float score = 5;               // 骑手评分
+  int32 order_count = 6;         // 配送订单数
+  string status = 7;             // 骑手状态：在线/离线/休息
+  string create_time = 8;        // 创建时间
+  string update_time = 9;        // 更新时间
+}
+
+// 配送订单信息
+message DeliveryOrder {
+  int64 order_id = 1;            // 订单ID
+  string order_no = 2;           // 订单编号
+  int64 rider_id = 3;            // 骑手ID
+  string rider_name = 4;         // 骑手姓名
+  int64 merchant_id = 5;         // 商家ID
+  string merchant_name = 6;      // 商家名称
+  string address = 7;            // 配送地址
+  float total_amount = 8;        // 订单金额
+  string delivery_status = 9;    // 配送状态：待取餐/配送中/已完成/已取消
+  string accept_time = 10;       // 接单时间
+  string pickup_time = 11;       // 取餐时间
+  string complete_time = 12;     // 完成时间
+}
+
+// 通用响应
+message CommonResponse {
+  int32 code = 1;
+  string msg = 2;
+}
+
+// 骑手注册请求
+message RiderRegisterRequest {
+  string name = 1 [(validate.rules).string.min_len = 2];
+  string phone = 2 [(validate.rules).string.pattern = "^1[3-9]\\d{9}$"];
+  string password = 3 [(validate.rules).string.min_len = 6];
+  string avatar = 4 [(validate.rules).string.uri = true];
+}
+
+// 骑手注册响应
+message RiderRegisterResponse {
+  int32 code = 1;
+  string msg = 2;
+  int64 rider_id = 3;
+  string token = 4;
+}
+
+// 骑手登录请求
+message RiderLoginRequest {
+  string phone = 1 [(validate.rules).string.pattern = "^1[3-9]\\d{9}$"];
+  string password = 2 [(validate.rules).string.min_len = 6];
+}
+
+// 骑手登录响应
+message RiderLoginResponse {
+  int32 code = 1;
+  string msg = 2;
+  int64 rider_id = 3;
+  string name = 4;
+  string token = 5;
+}
+
+// 获取骑手信息请求
+message GetRiderInfoRequest {
+  int64 rider_id = 1 [(validate.rules).int64.gt = 0];
+}
+
+// 获取骑手信息响应
+message GetRiderInfoResponse {
+  int32 code = 1;
+  string msg = 2;
+  Rider rider = 3;
+}
+
+// 骑手接单请求
+message AcceptOrderRequest {
+  int64 order_id = 1 [(validate.rules).int64.gt = 0];
+  int64 rider_id = 2 [(validate.rules).int64.gt = 0];
+}
+
+// 更新配送状态请求
+message UpdateDeliveryStatusRequest {
+  int64 order_id = 1 [(validate.rules).int64.gt = 0];
+  int64 rider_id = 2 [(validate.rules).int64.gt = 0];
+  string delivery_status = 3 [(validate.rules).string.min_len = 2];
+  string time = 4; // 状态变更时间（取餐/完成时间）
+}
+
+// 查询待接订单列表请求
+message ListPendingOrdersRequest {
+  string area = 1;               // 配送区域（可选）
+  int32 page = 2 [(validate.rules).int32.gte = 1];
+  int32 page_size = 3 [(validate.rules).int32.gte = 10, (validate.rules).int32.lte = 100];
+}
+
+// 查询待接订单列表响应
+message ListPendingOrdersResponse {
+  int32 code = 1;
+  string msg = 2;
+  repeated DeliveryOrder orders = 3;
+  int32 total = 4;
+  int32 page = 5;
+  int32 page_size = 6;
+}
+
+// 查询骑手配送订单请求
+message ListRiderOrdersRequest {
+  int64 rider_id = 1 [(validate.rules).int64.gt = 0];
+  string delivery_status = 2;    // 配送状态（可选）
+  int32 page = 3 [(validate.rules).int32.gte = 1];
+  int32 page_size = 4 [(validate.rules).int32.gte = 10, (validate.rules).int32.lte = 100];
+}
+
+// 查询骑手配送订单响应
+message ListRiderOrdersResponse {
+  int32 code = 1;
+  string msg = 2;
+  repeated DeliveryOrder orders = 3;
+  int32 total = 4;
+  int32 page = 5;
+  int32 page_size = 6;
+}
