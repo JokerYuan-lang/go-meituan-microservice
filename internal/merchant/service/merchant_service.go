@@ -4,8 +4,10 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/JokerYuan-lang/go-meituan-microservice/internal/merchant/client"
 	"github.com/JokerYuan-lang/go-meituan-microservice/internal/merchant/repo"
 	"github.com/JokerYuan-lang/go-meituan-microservice/internal/merchant/repo/model"
+	orderProto "github.com/JokerYuan-lang/go-meituan-microservice/internal/order/proto"
 	"github.com/JokerYuan-lang/go-meituan-microservice/pkg/utils"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
@@ -285,16 +287,24 @@ func (s *merchantService) AcceptOrder(ctx context.Context, param AcceptOrderPara
 		return utils.NewBizError("商家已歇业，无法接单")
 	}
 
-	// 3. TODO：调用订单服务更新订单状态为「已接单」（后续实现订单服务后补充）
-	// 暂时先日志记录，后续对接gRPC调用
-	zap.L().Info("商家接单成功", zap.Int64("order_id", param.OrderID), zap.Int64("merchant_id", param.MerchantID))
+	updateStatusReq := &orderProto.UpdateOrderStatusRequest{
+		OrderId:  param.OrderID,
+		Status:   "已接单",
+		Operator: "merchant_" + strconv.FormatInt(param.MerchantID, 10),
+	}
+
+	_, err = client.OrderClient.UpdateOrderStatus(ctx, updateStatusReq)
+	if err != nil {
+		zap.L().Error("调用订单服务更新状态失败", zap.Any("param", param), zap.Error(err))
+		return utils.NewSystemError("接单失败,订单服务异常")
+	}
 
 	// 4. 更新商家订单数+1
-	if err := s.merchantRepo.UpdateOrderCount(ctx, param.MerchantID, 1); err != nil {
+	if err = s.merchantRepo.UpdateOrderCount(ctx, param.MerchantID, 1); err != nil {
 		zap.L().Warn("更新商家订单数失败", zap.Int64("merchant_id", param.MerchantID), zap.Error(err))
 		// 不影响接单逻辑，仅日志警告
 	}
-
+	zap.L().Info("商家接单成功", zap.Int64("order_id", param.OrderID), zap.Int64("merchant_id", param.MerchantID))
 	return nil
 }
 
@@ -312,7 +322,18 @@ func (s *merchantService) RejectOrder(ctx context.Context, param RejectOrderPara
 		return err
 	}
 
-	// 3. TODO：调用订单服务更新订单状态为「已拒单」+ 记录拒单原因（后续补充）
+	updateStatusReq := &orderProto.UpdateOrderStatusRequest{
+		OrderId:  param.OrderID,
+		Status:   "已拒单",
+		Operator: "merchant_" + strconv.FormatInt(param.MerchantID, 10),
+		Remark:   param.Reason,
+	}
+	_, err = client.OrderClient.UpdateOrderStatus(ctx, updateStatusReq)
+	if err != nil {
+		zap.L().Error("调用订单服务更新状态失败", zap.Any("param", param), zap.Error(err))
+		return utils.NewSystemError("拒单失败，订单服务异常")
+	}
+
 	zap.L().Info("商家拒单", zap.Int64("order_id", param.OrderID), zap.Int64("merchant_id", param.MerchantID), zap.String("reason", param.Reason))
 
 	return nil
@@ -326,37 +347,37 @@ func (s *merchantService) ListMerchantOrders(ctx context.Context, param ListMerc
 		return ListMerchantOrdersResult{}, utils.NewParamError("参数错误：" + err.Error())
 	}
 
-	// 2. TODO：调用订单服务获取订单列表（后续实现订单服务后补充）
-	// 暂时返回模拟数据
-	mockOrders := []MerchantOrderResult{
-		{
-			OrderID:            1001,
-			UserID:             1,
-			UserName:           "测试用户001",
-			UserPhone:          "13800138001",
-			TotalAmount:        45.8,
-			Status:             "待接单",
-			CreateTime:         "2024-01-01 12:00:00",
-			ExpectDeliveryTime: "2024-01-01 12:30:00",
-		},
-		{
-			OrderID:            1002,
-			UserID:             2,
-			UserName:           "测试用户002",
-			UserPhone:          "13800138002",
-			TotalAmount:        68.9,
-			Status:             "已接单",
-			CreateTime:         "2024-01-01 11:00:00",
-			ExpectDeliveryTime: "2024-01-01 11:30:00",
-		},
+	// 2. 调用订单服务获取订单列表
+	listReq := &orderProto.ListMerchantOrdersRequest{
+		MerchantId: param.MerchantID,
+		Status:     param.Status,
+		Page:       param.Page,
+		PageSize:   param.PageSize,
+	}
+	listResp, err := client.OrderClient.ListMerchantOrders(ctx, listReq)
+	if err != nil {
+		zap.L().Error("调用订单服务查询订单失败", zap.Int64("merchant_id", param.MerchantID), zap.Error(err))
+		return ListMerchantOrdersResult{}, utils.NewSystemError("查询订单失败，订单服务异常")
+	}
+	var orders []MerchantOrderResult
+	for _, o := range listResp.Orders {
+		orders = append(orders, MerchantOrderResult{
+			OrderID:            o.OrderId,
+			UserID:             o.UserId,
+			UserName:           o.UserName,
+			UserPhone:          o.UserPhone,
+			TotalAmount:        float64(o.TotalAmount),
+			Status:             o.Status,
+			CreateTime:         o.CreateTime,
+			ExpectDeliveryTime: o.ExpectDeliveryTime,
+		})
 	}
 
-	// 3. 组装结果
 	result := ListMerchantOrdersResult{
-		Orders:   mockOrders,
-		Total:    int32(len(mockOrders)),
-		Page:     param.Page,
-		PageSize: param.PageSize,
+		Orders:   orders,
+		Total:    listResp.Total,
+		Page:     listResp.Page,
+		PageSize: listResp.PageSize,
 	}
 
 	return result, nil

@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package order;
+option go_package = "./internal/order/proto;orderProto";
+
+import "google/protobuf/empty.proto";
+import "validate.proto";
+
+service OrderService {
+  // 创建订单（用户下单）
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  // 更新订单状态（接单/拒单/配送/完成/取消）
+  rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (CommonResponse);
+  // 用户查询自己的订单列表
+  rpc ListUserOrders(ListUserOrdersRequest) returns (ListUserOrdersResponse);
+  // 商家查询自己的订单列表
+  rpc ListMerchantOrders(ListMerchantOrdersRequest) returns (ListMerchantOrdersResponse);
+  // 查询订单详情
+  rpc GetOrderByID(GetOrderRequest) returns (GetOrderResponse);
+  // 取消订单（用户/系统）
+  rpc CancelOrder(CancelOrderRequest) returns (CommonResponse);
+}
+
+// 订单项（商品）
+message OrderItem {
+  int64 item_id = 1;             // 订单项ID
+  int64 order_id = 2;            // 订单ID
+  int64 product_id = 3;          // 商品ID
+  string product_name = 4;       // 商品名称
+  float price = 5;               // 商品单价
+  int32 quantity = 6;            // 购买数量
+  float total_price = 7;         // 商品总价
+}
+
+// 订单基础信息
+message Order {
+  int64 order_id = 1;            // 订单ID
+  string order_no = 2;           // 订单编号（唯一）
+  int64 user_id = 3;             // 用户ID
+  string user_name = 4;          // 用户名
+  string user_phone = 5;         // 用户电话
+  int64 merchant_id = 6;         // 商家ID
+  string merchant_name = 7;      // 商家名称
+  repeated OrderItem items = 8;  // 订单项列表
+  float total_amount = 9;        // 订单总金额
+  string status = 10;            // 订单状态：待接单/已接单/待配送/已完成/已取消/已拒单
+  string address = 11;           // 收货地址
+  string create_time = 12;       // 创建时间
+  string update_time = 13;       // 更新时间
+  string expect_delivery_time = 14; // 预计送达时间
+  string remark = 15;            // 备注（拒单原因/取消原因）
+}
+
+// 通用响应
+message CommonResponse {
+  int32 code = 1;
+  string msg = 2;
+}
+
+// 创建订单请求
+message CreateOrderRequest {
+  int64 user_id = 1 [(validate.rules).int64.gt = 0];
+  string user_name = 2 [(validate.rules).string.min_len = 2];
+  string user_phone = 3 [(validate.rules).string.pattern = "^1[3-9]\\d{9}$"];
+  int64 merchant_id = 4 [(validate.rules).int64.gt = 0];
+  repeated OrderItem items = 5 [(validate.rules).repeated.min_items = 1];
+  float total_amount = 6 [(validate.rules).float.gt = 0];
+  string address = 7 [(validate.rules).string.min_len = 5];
+  string expect_delivery_time = 8; // 可选
+}
+
+// 创建订单响应
+message CreateOrderResponse {
+  int32 code = 1;
+  string msg = 2;
+  int64 order_id = 3;
+  string order_no = 4;
+}
+
+// 更新订单状态请求
+message UpdateOrderStatusRequest {
+  int64 order_id = 1 [(validate.rules).int64.gt = 0];
+  string status = 2 [(validate.rules).string.min_len = 2];
+  string operator = 3 [(validate.rules).string.min_len = 2]; // 操作人（merchant_1/user_1）
+  string remark = 4; // 备注（可选）
+}
+
+// 查询用户订单列表请求
+message ListUserOrdersRequest {
+  int64 user_id = 1 [(validate.rules).int64.gt = 0];
+  string status = 2; // 订单状态（可选）
+  int32 page = 3 [(validate.rules).int32.gte = 1];
+  int32 page_size = 4 [(validate.rules).int32.gte = 10, (validate.rules).int32.lte = 100];
+}
+
+// 查询商家订单列表请求
+message ListMerchantOrdersRequest {
+  int64 merchant_id = 1 [(validate.rules).int64.gt = 0];
+  string status = 2; // 订单状态（可选）
+  int32 page = 3 [(validate.rules).int32.gte = 1];
+  int32 page_size = 4 [(validate.rules).int32.gte = 10, (validate.rules).int32.lte = 100];
+}
+
+// 查询订单列表响应（用户/商家通用）
+message ListUserOrdersResponse {
+  int32 code = 1;
+  string msg = 2;
+  repeated Order orders = 3;
+  int32 total = 4;
+  int32 page = 5;
+  int32 page_size = 6;
+}
+message ListMerchantOrdersResponse {
+  int32 code = 1;
+  string msg = 2;
+  repeated Order orders = 3;
+  int32 total = 4;
+  int32 page = 5;
+  int32 page_size = 6;
+}
+
+// 查询订单详情请求
+message GetOrderRequest {
+  int64 order_id = 1 [(validate.rules).int64.gt = 0];
+}
+
+// 查询订单详情响应
+message GetOrderResponse {
+  int32 code = 1;
+  string msg = 2;
+  Order order = 3;
+}
+
+// 取消订单请求
+message CancelOrderRequest {
+  int64 order_id = 1 [(validate.rules).int64.gt = 0];
+  int64 user_id = 2 [(validate.rules).int64.gt = 0]; // 仅用户可取消
+  string reason = 3 [(validate.rules).string.min_len = 2];
+}
